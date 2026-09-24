@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # ============================================================
+  # DATABASE / CACHE
+  # ============================================================
+  postgres:
+    image: postgres:16
+    container_name: cart-postgres
+    environment:
+      POSTGRES_DB: shopping_cart_db
+      POSTGRES_USER: ${POSTGRES_USER:-cart_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cart_password}
+    ports:
+      - "5433:5432"  # Host port 5433 mapped to container port 5432 to avoid conflicts
+    volumes:
+      - cart_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cart_user} -d shopping_cart_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cart-network
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: cart-redis
+    ports:
+      - "6380:6379"  # Host port 6380 mapped to container port 6379 to avoid conflicts
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cart-network
+
+  # ============================================================
+  # SHOPPING CART SERVICE
+  # ============================================================
+  shopping-cart-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shopping-cart-service
+    ports:
+      - "5001:5000"  # Binds host port 5001 (Flask default is 5000/8080)
+    environment:
+      FLASK_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cart_user}:${POSTGRES_PASSWORD:-cart_password}@postgres:5432/shopping_cart_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cart-network
+
+networks:
+  cart-network:
+    driver: bridge
+
+volumes:
+  cart_postgres_data:

@@ -8,7 +8,8 @@ pipeline {
     stages {
         stage('Checkout Source Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/munuhee/shopping-cart-service.git'
+                // Check out YOUR repository where docker-compose.yml lives
+                git branch: 'main', url: 'https://github.com/Rajathshetty09/shopping-cart-service.git'
             }
         }
 
@@ -21,7 +22,7 @@ pipeline {
 
         stage('Health Check') {
             steps {
-                sleep 5
+                sleep 10
                 sh 'docker ps --filter name=shopping-cart-service'
             }
         }
